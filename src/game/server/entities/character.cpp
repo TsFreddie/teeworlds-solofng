@@ -581,9 +581,10 @@ void CCharacter::TakeNinja()
 	//SetWeapon(m_ActiveWeapon); //has no effect
 	// Vivid when unfreeze
 	if (g_Config.m_SvVivid)
-	{
+	{	
+		m_Jumped = false;
 		GameServer()->CreateExplosion(m_Pos, 0, 0, true);
-		switch ((int)m_Pos.x % 2)
+		switch ((int)m_Pos.x+(int)m_Pos.y % 2)
 		{
 			case 0: 
 				TakeDamage(vec2(-0.3,-1)*9, 0, 0, 0);
@@ -678,7 +679,9 @@ void CCharacter::Tick()
 	if((Col <= 7 && Col&CCollision::COLFLAG_DEATH) || GameLayerClipped(m_Pos)) //seriously.
 	{
 		// handle death-tiles and leaving gamelayer
-		m_Core.m_Frozen = 0; //we just unfreeze so it never counts as a sacrifice
+		//we just unfreeze so it never counts as a sacrifice
+		m_ReloadTimer = 1; // Fix death shot
+		m_Core.m_Frozen = 0;
 		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
 	}
 

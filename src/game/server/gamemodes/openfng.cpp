@@ -5,7 +5,7 @@
 #include <base/system.h>
 
 #include <engine/shared/config.h>
-#include <engine/server/server.h>
+//#include <engine/server/server.h>
 
 #include <game/server/gamecontext.h>
 #include <game/server/entities/character.h>
@@ -239,13 +239,19 @@ void CGameControllerOpenFNG::DoRagequit()
 {
 	if (*m_aRagequitAddr)
 	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "ban %s %d %s", m_aRagequitAddr, g_Config.m_SvPunishRagequit, "Forcefully left the server while being frozen.");
+		GameServer()->Console()->ExecuteLine(aBuf);
+		*m_aRagequitAddr = '\0';
+		/*
 		NETADDR Addr;
 		if (net_addr_from_str(&Addr, m_aRagequitAddr) == 0)
 		{
 			Addr.port = 0;
-			((CServer*)Server())->BanAdd(Addr, CFG(PunishRagequit), "Forcefully left the server while being frozen.");
+			((CServer*)Server())->m_ServerBan.BanAddr(Addr, CFG(PunishRagequit), "Forcefully left the server while being frozen.");
 		}
 		*m_aRagequitAddr = '\0';
+		*/
 	}
 }
 

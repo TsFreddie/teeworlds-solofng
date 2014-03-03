@@ -101,7 +101,7 @@ public:
 	//virtual bool CanSpawn(int Team, vec2 *pPos);
 	//virtual const char *GetTeamName(int Team);
 	//virtual int GetAutoTeam(int NotThisID);
-	//virtual bool CanJoinTeam(int Team, int NotThisID);
+	virtual bool CanJoinTeam(int Team, int NotThisID);
 	virtual void PostReset();
 };
 #endif

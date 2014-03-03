@@ -667,11 +667,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		if (pMsg->m_pMessage[0] == '/')
 		{
 			if (str_comp_num(pMsg->m_pMessage, "/info", 5) == 0)
-				SendChatTarget(ClientID, "This is SoloFNG and other stuff, Modded by TsFreddie"
-									 " - original from OpenFNG by fisted"
+				SendChatTarget(ClientID, "This is OpenFNG, written by fisted"
 				                     " - get it at http://github.com/fisted/teeworlds/tree/openfng"
-				                     " - IRC: #OpenFNG on irc.quakenet.org"
-									 " - Teeworlds China! : http://teeworlds.cn/");
+				                     " - IRC: #OpenFNG on irc.quakenet.org");
 			else if (str_comp(pMsg->m_pMessage, "/cmdlist") == 0)
 				SendChatTarget(ClientID, "What cmdlist?!");
 		}
@@ -788,7 +786,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				char aAddrStr[NETADDR_MAXSTRSIZE] = {0};
 				Server()->GetClientAddr(KickID, aAddrStr, sizeof(aAddrStr));
 				str_format(aCmd, sizeof(aCmd), "ban %s %d Banned by vote", aAddrStr, g_Config.m_SvVoteKickBantime);
-				Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aCmd);
 			}
 		}
 		else if(str_comp_nocase(pMsg->m_Type, "spectate") == 0)
@@ -848,14 +845,14 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 		if(pPlayer->GetTeam() == pMsg->m_Team || (g_Config.m_SvSpamprotection && pPlayer->m_LastSetTeam && pPlayer->m_LastSetTeam+Server()->TickSpeed()*3 > Server()->Tick()))
 			return;
-			
+
 		if(pMsg->m_Team != TEAM_SPECTATORS && m_LockTeams)
 		{
 			pPlayer->m_LastSetTeam = Server()->Tick();
 			SendBroadcast("Teams are locked", ClientID);
 			return;
 		}
-		
+
 		if(pPlayer->m_TeamChangeTick > Server()->Tick())
 		{
 			pPlayer->m_LastSetTeam = Server()->Tick();
@@ -874,7 +871,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				pPlayer->m_LastSetTeam = Server()->Tick();
 				if(pPlayer->GetTeam() == TEAM_SPECTATORS || pMsg->m_Team == TEAM_SPECTATORS)
 					m_VoteUpdate = true;
-				pPlayer->SetTeam(pMsg->m_Team, true);
+				pPlayer->SetTeam(pMsg->m_Team);
 				(void)m_pController->CheckTeamBalance();
 				pPlayer->m_TeamChangeTick = Server()->Tick();
 			}
@@ -1041,11 +1038,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		if(pChr && g_Config.m_SvEmotionalTees)
 		{
 			int Emote = EMOTE_NORMAL;
-			char nick [] = "TsFreddie";
-			if (strcmp(Server()->ClientName(ClientID), nick) == 0)
-			{
-				Emote = EMOTE_HAPPY;
-			}
 			switch(pMsg->m_Emoticon)
 			{
 			case EMOTICON_EXCLAMATION:
@@ -1708,6 +1700,17 @@ void CGameContext::OnShutdown()
 
 void CGameContext::OnSnap(int ClientID)
 {
+	// add tuning to demo
+	CTuningParams StandardTuning;
+	if(ClientID == -1 && Server()->DemoRecorder_IsRecording() && mem_comp(&StandardTuning, &m_Tuning, sizeof(CTuningParams)) != 0)
+	{
+		CMsgPacker Msg(NETMSGTYPE_SV_TUNEPARAMS);
+		int *pParams = (int *)&m_Tuning;
+		for(unsigned i = 0; i < sizeof(m_Tuning)/sizeof(int); i++)
+			Msg.AddInt(pParams[i]);
+		Server()->SendMsg(&Msg, MSGFLAG_RECORD|MSGFLAG_NOSEND, ClientID);
+	}
+	
 	m_World.Snap(ClientID);
 	m_pController->Snap(ClientID);
 	m_Events.Snap(ClientID);
