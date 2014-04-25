@@ -646,9 +646,11 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 		m_LatestInput.m_TargetY = -1;
 		
 	//AntiBot ------------------------------------------------------------
+	vec2 TarPos = vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY);
+	CCharacter *aEnts[MAX_CLIENTS];
+	int Num = GameServer()->m_World.FindEntities(m_Pos + TarPos, 10, (CEntity**)aEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 	char aBuf[255];
 	// Dyn:632 Normal:399
-	vec2 TarPos = vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY);
 	float TarPosLength = length(TarPos);
 	float TravelDis = distance(m_ABSpinPos,TarPos);
 	if (TarPosLength < 398 || (TarPosLength > 401 && TarPosLength < 632))
@@ -661,6 +663,16 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 				m_ABSpinTime = 0;
 			m_ABSpinLength = TarPosLength;
 			m_ABSpinPos = TarPos;
+			for (int i = 0; i < Num; ++i)
+			{
+				if (aEnts[i] == this)
+					continue;
+				float CheckAimDis = distance(m_Pos + TarPos, aEnts[i]->m_Pos);
+				if (CheckAimDis < 25)
+					m_ABAimTime ++;
+				else
+					m_ABAimTime = 0;
+			}
 		}
 	}
 	else
@@ -672,35 +684,58 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 			GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 		}
 	}
+	for (int i = 0; i < Num; ++i)
+	{
+		if (aEnts[i] == this)
+			continue;
+		float CheckAimDis = distance(m_Pos + TarPos, aEnts[i]->m_Pos);
+		if (CheckAimDis < 1)
+			m_ABAimAcTime ++;
+		else
+			m_ABAimAcTime = 0;
+	}
+	/*
 	for (int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if (i != m_pPlayer->GetCID() && GameServer()->m_apPlayers[i] && GameServer()->m_apPlayers[i]->GetCharacter())
 		{
+			
 			float CheckAimDis = distance(m_Pos + TarPos, GameServer()->m_apPlayers[i]->GetCharacter()->m_Pos);
 			if (CheckAimDis < 1)
-			{
-				str_format(aBuf, sizeof(aBuf), "%d : %.2f",m_pPlayer->GetCID(), CheckAimDis);
-				GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
-			}
+				m_ABAimTime ++;
+			else
+				m_ABAimTime = 0;
 		}
 	}
-	if (m_ABSpinTime == 10 && !m_pPlayer->GetBot(0))
+	*/
+	if ((m_ABSpinTime == 10) && !m_pPlayer->GetBot(0))
 	{
 		m_pPlayer->SetBot(0);
-		str_format(aBuf, sizeof(aBuf), "%s is SpinBot(%.2f)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+		str_format(aBuf, sizeof(aBuf), "%s is SpinBot(At Distance:%.2f)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 	}
-	
+	if ((m_ABAimAcTime == 5) && !m_pPlayer->GetBot(1))
+	{
+		m_pPlayer->SetBot(1);
+		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Position matching)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	if ((m_ABAimTime == 10) && !m_pPlayer->GetBot(1))
+	{
+		m_pPlayer->SetBot(1);
+		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Similar behavior)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
 	if (Server()->Tick() > m_ABNextBanTick && m_pPlayer->GetBot(1))
 	{
-		str_format(aBuf, sizeof(aBuf), "Voting to ban %s.",Server()->ClientName(m_pPlayer->GetCID()));
+		str_format(aBuf, sizeof(aBuf), "Voting to ban %s (bot).",Server()->ClientName(m_pPlayer->GetCID()));
 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 		str_format(aBuf, sizeof(aBuf), "Ban %s",Server()->ClientName(m_pPlayer->GetCID()));
 		char aCmd[128];
 		str_format(aCmd, sizeof(aCmd), "Ban %d 60 Bot Detected!",m_pPlayer->GetCID());
-		GameServer()->StartVote(aBuf, aCmd, "Bot Detected![By System]");
+		GameServer()->StartVote(aBuf, aCmd, "[System]Bot!");
 		
-		m_ABNextBanTick = Server()->Tick() + Server()->TickSpeed() * 1200;
+		m_ABNextBanTick = Server()->Tick() + Server()->TickSpeed() * 60;
 	}
 	// -------------------------------------------------------------------------------------
 	if(m_NumInputs > 2 && m_pPlayer->GetTeam() != TEAM_SPECTATORS)
