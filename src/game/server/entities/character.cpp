@@ -253,8 +253,13 @@ void CCharacter::FireWeapon()
 		return;
 
 	DoWeaponSwitch();
+	
+	/*
+	vec2 RealDirection = vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY);
+	GameServer()->CreateExplosion(m_Pos+RealDirection, 0, 0, true);
+	*/
+	
 	vec2 Direction = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
-
 	bool FullAuto = false;
 	if(m_ActiveWeapon == WEAPON_GRENADE || m_ActiveWeapon == WEAPON_SHOTGUN || m_ActiveWeapon == WEAPON_RIFLE || (m_ActiveWeapon == WEAPON_HAMMER && g_Config.m_SvSuperHammer))
 		FullAuto = true;
@@ -640,6 +645,64 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 	if(m_LatestInput.m_TargetX == 0 && m_LatestInput.m_TargetY == 0)
 		m_LatestInput.m_TargetY = -1;
 		
+	//AntiBot ------------------------------------------------------------
+	char aBuf[255];
+	// Dyn:632 Normal:399
+	vec2 TarPos = vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY);
+	float TarPosLength = length(TarPos);
+	float TravelDis = distance(m_ABSpinPos,TarPos);
+	if (TarPosLength < 398 || (TarPosLength > 401 && TarPosLength < 632))
+	{
+		if (TravelDis > 50)
+		{
+			if (abs(m_ABSpinLength - TarPosLength) < 1)
+				m_ABSpinTime ++;
+			else
+				m_ABSpinTime = 0;
+			m_ABSpinLength = TarPosLength;
+			m_ABSpinPos = TarPos;
+		}
+	}
+	else
+	{
+		if (TarPosLength > 634 && !m_pPlayer->GetBot(1))
+		{
+			m_pPlayer->SetBot(1);
+			str_format(aBuf, sizeof(aBuf), "%s is AimBot(Invaild Mouse Pos)",Server()->ClientName(m_pPlayer->GetCID()));
+			GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+		}
+	}
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (i != m_pPlayer->GetCID() && GameServer()->m_apPlayers[i] && GameServer()->m_apPlayers[i]->GetCharacter())
+		{
+			float CheckAimDis = distance(m_Pos + TarPos, GameServer()->m_apPlayers[i]->GetCharacter()->m_Pos);
+			if (CheckAimDis < 1)
+			{
+				str_format(aBuf, sizeof(aBuf), "%d : %.2f",m_pPlayer->GetCID(), CheckAimDis);
+				GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+			}
+		}
+	}
+	if (m_ABSpinTime == 10 && !m_pPlayer->GetBot(0))
+	{
+		m_pPlayer->SetBot(0);
+		str_format(aBuf, sizeof(aBuf), "%s is SpinBot(%.2f)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	
+	if (Server()->Tick() > m_ABNextBanTick && m_pPlayer->GetBot(1))
+	{
+		str_format(aBuf, sizeof(aBuf), "Voting to ban %s.",Server()->ClientName(m_pPlayer->GetCID()));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+		str_format(aBuf, sizeof(aBuf), "Ban %s",Server()->ClientName(m_pPlayer->GetCID()));
+		char aCmd[128];
+		str_format(aCmd, sizeof(aCmd), "Ban %d 60 Bot Detected!",m_pPlayer->GetCID());
+		GameServer()->StartVote(aBuf, aCmd, "Bot Detected![By System]");
+		
+		m_ABNextBanTick = Server()->Tick() + Server()->TickSpeed() * 1200;
+	}
+	// -------------------------------------------------------------------------------------
 	if(m_NumInputs > 2 && m_pPlayer->GetTeam() != TEAM_SPECTATORS)
 	{
 		HandleWeaponSwitch();
@@ -1038,7 +1101,7 @@ void CCharacter::Snap(int SnappingClient)
 	pCharacter->m_AttackTick = m_AttackTick;
 
 	pCharacter->m_Direction = m_Input.m_Direction;
-
+	
 	if(m_pPlayer->GetCID() == SnappingClient || SnappingClient == -1 ||
 		(!g_Config.m_SvStrictSpectateMode && m_pPlayer->GetCID() == GameServer()->m_apPlayers[SnappingClient]->m_SpectatorID))
 	{

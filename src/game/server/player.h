@@ -32,8 +32,6 @@ public:
 	void OnPredictedInput(CNetObj_PlayerInput *NewInput);
 	void OnDisconnect(const char *pReason);
 	
-
-
 	void KillCharacter(int Weapon = WEAPON_GAME);
 	CCharacter *GetCharacter();
 
@@ -103,10 +101,13 @@ public:
 	int Anticamper();
 
 
-bool m_SentCampMsg;
-int m_CampTick;
-vec2 m_CampPos;
+	bool m_SentCampMsg;
+	int m_CampTick;
+	vec2 m_CampPos;
 
+	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }
+	void SetBot(int BotType) { switch (BotType) {case 0: m_SpinBot = true; break; case 1:m_AimBot = true; break;} }
+	
 private:
 	CCharacter *m_pCharacter;
 	CGameContext *m_pGameServer;
@@ -118,6 +119,10 @@ private:
 	bool m_Spawning;
 	int m_ClientID;
 	int m_Team;
+	
+	//Anti-Bot
+	bool m_SpinBot;
+	bool m_AimBot;
 };
 
 #endif
