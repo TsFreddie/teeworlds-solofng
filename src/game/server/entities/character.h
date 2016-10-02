@@ -151,11 +151,6 @@ private:
 	int m_HammeredBy;
 
 	int m_BloodTicks;
-	
-	float m_ABSpinLength;
-	vec2 m_ABSpinPos;
-	int m_ABSpinTime;
-	int m_ABNextBanTick;
 };
 
 #endif
