@@ -156,9 +156,6 @@ private:
 	vec2 m_ABSpinPos;
 	int m_ABSpinTime;
 	int m_ABNextBanTick;
-	
-	int m_ABAimAcTime;
-	int m_ABAimTime;
 };
 
 #endif
